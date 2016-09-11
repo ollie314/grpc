@@ -152,6 +152,7 @@
     <ClInclude Include="$(SolutionDir)\..\include\grpc\compression.h" />
     <ClInclude Include="$(SolutionDir)\..\include\grpc\grpc.h" />
     <ClInclude Include="$(SolutionDir)\..\include\grpc\grpc_posix.h" />
+    <ClInclude Include="$(SolutionDir)\..\include\grpc\grpc_security_constants.h" />
     <ClInclude Include="$(SolutionDir)\..\include\grpc\status.h" />
     <ClInclude Include="$(SolutionDir)\..\include\grpc\impl\codegen\byte_buffer.h" />
     <ClInclude Include="$(SolutionDir)\..\include\grpc\impl\codegen\byte_buffer_reader.h" />
@@ -205,6 +206,7 @@
     <ClInclude Include="$(SolutionDir)\..\src\core\lib\http\httpcli.h" />
     <ClInclude Include="$(SolutionDir)\..\src\core\lib\http\parser.h" />
     <ClInclude Include="$(SolutionDir)\..\src\core\lib\iomgr\closure.h" />
+    <ClInclude Include="$(SolutionDir)\..\src\core\lib\iomgr\combiner.h" />
     <ClInclude Include="$(SolutionDir)\..\src\core\lib\iomgr\endpoint.h" />
     <ClInclude Include="$(SolutionDir)\..\src\core\lib\iomgr\endpoint_pair.h" />
     <ClInclude Include="$(SolutionDir)\..\src\core\lib\iomgr\error.h" />
@@ -334,6 +336,8 @@
     <ClCompile Include="$(SolutionDir)\..\src\core\lib\http\parser.c">
     </ClCompile>
     <ClCompile Include="$(SolutionDir)\..\src\core\lib\iomgr\closure.c">
+    </ClCompile>
+    <ClCompile Include="$(SolutionDir)\..\src\core\lib\iomgr\combiner.c">
     </ClCompile>
     <ClCompile Include="$(SolutionDir)\..\src\core\lib\iomgr\endpoint.c">
     </ClCompile>
