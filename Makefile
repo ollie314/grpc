@@ -909,6 +909,7 @@ bin_decoder_test: $(BINDIR)/$(CONFIG)/bin_decoder_test
 bin_encoder_test: $(BINDIR)/$(CONFIG)/bin_encoder_test
 census_context_test: $(BINDIR)/$(CONFIG)/census_context_test
 census_resource_test: $(BINDIR)/$(CONFIG)/census_resource_test
+census_trace_context_test: $(BINDIR)/$(CONFIG)/census_trace_context_test
 channel_create_test: $(BINDIR)/$(CONFIG)/channel_create_test
 chttp2_hpack_encoder_test: $(BINDIR)/$(CONFIG)/chttp2_hpack_encoder_test
 chttp2_status_conversion_test: $(BINDIR)/$(CONFIG)/chttp2_status_conversion_test
@@ -1133,6 +1134,7 @@ h2_fd_test: $(BINDIR)/$(CONFIG)/h2_fd_test
 h2_full_test: $(BINDIR)/$(CONFIG)/h2_full_test
 h2_full+pipe_test: $(BINDIR)/$(CONFIG)/h2_full+pipe_test
 h2_full+trace_test: $(BINDIR)/$(CONFIG)/h2_full+trace_test
+h2_http_proxy_test: $(BINDIR)/$(CONFIG)/h2_http_proxy_test
 h2_load_reporting_test: $(BINDIR)/$(CONFIG)/h2_load_reporting_test
 h2_oauth2_test: $(BINDIR)/$(CONFIG)/h2_oauth2_test
 h2_proxy_test: $(BINDIR)/$(CONFIG)/h2_proxy_test
@@ -1149,6 +1151,7 @@ h2_fd_nosec_test: $(BINDIR)/$(CONFIG)/h2_fd_nosec_test
 h2_full_nosec_test: $(BINDIR)/$(CONFIG)/h2_full_nosec_test
 h2_full+pipe_nosec_test: $(BINDIR)/$(CONFIG)/h2_full+pipe_nosec_test
 h2_full+trace_nosec_test: $(BINDIR)/$(CONFIG)/h2_full+trace_nosec_test
+h2_http_proxy_nosec_test: $(BINDIR)/$(CONFIG)/h2_http_proxy_nosec_test
 h2_load_reporting_nosec_test: $(BINDIR)/$(CONFIG)/h2_load_reporting_nosec_test
 h2_proxy_nosec_test: $(BINDIR)/$(CONFIG)/h2_proxy_nosec_test
 h2_sockpair_nosec_test: $(BINDIR)/$(CONFIG)/h2_sockpair_nosec_test
@@ -1237,6 +1240,7 @@ buildtests_c: privatelibs_c \
   $(BINDIR)/$(CONFIG)/bin_encoder_test \
   $(BINDIR)/$(CONFIG)/census_context_test \
   $(BINDIR)/$(CONFIG)/census_resource_test \
+  $(BINDIR)/$(CONFIG)/census_trace_context_test \
   $(BINDIR)/$(CONFIG)/channel_create_test \
   $(BINDIR)/$(CONFIG)/chttp2_hpack_encoder_test \
   $(BINDIR)/$(CONFIG)/chttp2_status_conversion_test \
@@ -1353,6 +1357,7 @@ buildtests_c: privatelibs_c \
   $(BINDIR)/$(CONFIG)/h2_full_test \
   $(BINDIR)/$(CONFIG)/h2_full+pipe_test \
   $(BINDIR)/$(CONFIG)/h2_full+trace_test \
+  $(BINDIR)/$(CONFIG)/h2_http_proxy_test \
   $(BINDIR)/$(CONFIG)/h2_load_reporting_test \
   $(BINDIR)/$(CONFIG)/h2_oauth2_test \
   $(BINDIR)/$(CONFIG)/h2_proxy_test \
@@ -1369,6 +1374,7 @@ buildtests_c: privatelibs_c \
   $(BINDIR)/$(CONFIG)/h2_full_nosec_test \
   $(BINDIR)/$(CONFIG)/h2_full+pipe_nosec_test \
   $(BINDIR)/$(CONFIG)/h2_full+trace_nosec_test \
+  $(BINDIR)/$(CONFIG)/h2_http_proxy_nosec_test \
   $(BINDIR)/$(CONFIG)/h2_load_reporting_nosec_test \
   $(BINDIR)/$(CONFIG)/h2_proxy_nosec_test \
   $(BINDIR)/$(CONFIG)/h2_sockpair_nosec_test \
@@ -1551,6 +1557,8 @@ test_c: buildtests_c
 	$(Q) $(BINDIR)/$(CONFIG)/census_context_test || ( echo test census_context_test failed ; exit 1 )
 	$(E) "[RUN]     Testing census_resource_test"
 	$(Q) $(BINDIR)/$(CONFIG)/census_resource_test || ( echo test census_resource_test failed ; exit 1 )
+	$(E) "[RUN]     Testing census_trace_context_test"
+	$(Q) $(BINDIR)/$(CONFIG)/census_trace_context_test || ( echo test census_trace_context_test failed ; exit 1 )
 	$(E) "[RUN]     Testing channel_create_test"
 	$(Q) $(BINDIR)/$(CONFIG)/channel_create_test || ( echo test channel_create_test failed ; exit 1 )
 	$(E) "[RUN]     Testing chttp2_hpack_encoder_test"
@@ -2443,20 +2451,17 @@ PUBLIC_HEADERS_C += \
     include/grpc/support/tls_msvc.h \
     include/grpc/support/tls_pthread.h \
     include/grpc/support/useful.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
 
 LIBGPR_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(LIBGPR_SRC))))
 
@@ -2530,6 +2535,7 @@ LIBGRPC_SRC = \
     src/core/lib/channel/handshaker.c \
     src/core/lib/channel/http_client_filter.c \
     src/core/lib/channel/http_server_filter.c \
+    src/core/lib/channel/message_size_filter.c \
     src/core/lib/compression/compression.c \
     src/core/lib/compression/message_compress.c \
     src/core/lib/debug/trace.c \
@@ -2670,6 +2676,7 @@ LIBGRPC_SRC = \
     src/core/ext/client_config/client_config_plugin.c \
     src/core/ext/client_config/connector.c \
     src/core/ext/client_config/default_initial_connect_string.c \
+    src/core/ext/client_config/http_connect_handshaker.c \
     src/core/ext/client_config/initial_connect_string.c \
     src/core/ext/client_config/lb_policy.c \
     src/core/ext/client_config/lb_policy_factory.c \
@@ -2710,6 +2717,7 @@ LIBGRPC_SRC = \
     src/core/ext/census/operation.c \
     src/core/ext/census/placeholders.c \
     src/core/ext/census/resource.c \
+    src/core/ext/census/trace_context.c \
     src/core/ext/census/tracing.c \
     src/core/plugin_registry/grpc_plugin_registry.c \
 
@@ -2721,27 +2729,23 @@ PUBLIC_HEADERS_C += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security_constants.h \
     include/grpc/status.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc/grpc_security.h \
     include/grpc/census.h \
 
@@ -2807,6 +2811,7 @@ LIBGRPC_CRONET_SRC = \
     src/core/lib/channel/handshaker.c \
     src/core/lib/channel/http_client_filter.c \
     src/core/lib/channel/http_server_filter.c \
+    src/core/lib/channel/message_size_filter.c \
     src/core/lib/compression/compression.c \
     src/core/lib/compression/message_compress.c \
     src/core/lib/debug/trace.c \
@@ -2921,6 +2926,7 @@ LIBGRPC_CRONET_SRC = \
     src/core/ext/client_config/client_config_plugin.c \
     src/core/ext/client_config/connector.c \
     src/core/ext/client_config/default_initial_connect_string.c \
+    src/core/ext/client_config/http_connect_handshaker.c \
     src/core/ext/client_config/initial_connect_string.c \
     src/core/ext/client_config/lb_policy.c \
     src/core/ext/client_config/lb_policy_factory.c \
@@ -2971,27 +2977,23 @@ PUBLIC_HEADERS_C += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security_constants.h \
     include/grpc/status.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc/grpc_cronet.h \
     include/grpc/grpc_security.h \
 
@@ -3054,6 +3056,7 @@ LIBGRPC_TEST_UTIL_SRC = \
     test/core/end2end/data/test_root_cert.c \
     test/core/security/oauth2_utils.c \
     test/core/end2end/cq_verifier.c \
+    test/core/end2end/fixtures/http_proxy.c \
     test/core/end2end/fixtures/proxy.c \
     test/core/iomgr/endpoint_tests.c \
     test/core/util/grpc_profiler.c \
@@ -3073,6 +3076,7 @@ LIBGRPC_TEST_UTIL_SRC = \
     src/core/lib/channel/handshaker.c \
     src/core/lib/channel/http_client_filter.c \
     src/core/lib/channel/http_server_filter.c \
+    src/core/lib/channel/message_size_filter.c \
     src/core/lib/compression/compression.c \
     src/core/lib/compression/message_compress.c \
     src/core/lib/debug/trace.c \
@@ -3164,27 +3168,23 @@ PUBLIC_HEADERS_C += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security_constants.h \
     include/grpc/status.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
 
 LIBGRPC_TEST_UTIL_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(LIBGRPC_TEST_UTIL_SRC))))
 
@@ -3222,6 +3222,7 @@ endif
 
 LIBGRPC_TEST_UTIL_UNSECURE_SRC = \
     test/core/end2end/cq_verifier.c \
+    test/core/end2end/fixtures/http_proxy.c \
     test/core/end2end/fixtures/proxy.c \
     test/core/iomgr/endpoint_tests.c \
     test/core/util/grpc_profiler.c \
@@ -3267,6 +3268,7 @@ LIBGRPC_UNSECURE_SRC = \
     src/core/lib/channel/handshaker.c \
     src/core/lib/channel/http_client_filter.c \
     src/core/lib/channel/http_server_filter.c \
+    src/core/lib/channel/message_size_filter.c \
     src/core/lib/compression/compression.c \
     src/core/lib/compression/message_compress.c \
     src/core/lib/debug/trace.c \
@@ -3381,6 +3383,7 @@ LIBGRPC_UNSECURE_SRC = \
     src/core/ext/client_config/client_config_plugin.c \
     src/core/ext/client_config/connector.c \
     src/core/ext/client_config/default_initial_connect_string.c \
+    src/core/ext/client_config/http_connect_handshaker.c \
     src/core/ext/client_config/initial_connect_string.c \
     src/core/ext/client_config/lb_policy.c \
     src/core/ext/client_config/lb_policy_factory.c \
@@ -3417,6 +3420,7 @@ LIBGRPC_UNSECURE_SRC = \
     src/core/ext/census/operation.c \
     src/core/ext/census/placeholders.c \
     src/core/ext/census/resource.c \
+    src/core/ext/census/trace_context.c \
     src/core/ext/census/tracing.c \
     src/core/plugin_registry/grpc_unsecure_plugin_registry.c \
 
@@ -3428,27 +3432,23 @@ PUBLIC_HEADERS_C += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security_constants.h \
     include/grpc/status.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc/census.h \
 
 LIBGRPC_UNSECURE_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(LIBGRPC_UNSECURE_SRC))))
@@ -3608,6 +3608,7 @@ LIBGRPC++_SRC = \
     src/core/lib/channel/handshaker.c \
     src/core/lib/channel/http_client_filter.c \
     src/core/lib/channel/http_server_filter.c \
+    src/core/lib/channel/message_size_filter.c \
     src/core/lib/compression/compression.c \
     src/core/lib/compression/message_compress.c \
     src/core/lib/debug/trace.c \
@@ -3747,27 +3748,23 @@ PUBLIC_HEADERS_CXX += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security_constants.h \
     include/grpc/status.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc++/impl/codegen/async_stream.h \
     include/grpc++/impl/codegen/async_unary_call.h \
     include/grpc++/impl/codegen/call.h \
@@ -3791,6 +3788,7 @@ PUBLIC_HEADERS_CXX += \
     include/grpc++/impl/codegen/service_type.h \
     include/grpc++/impl/codegen/status.h \
     include/grpc++/impl/codegen/status_code_enum.h \
+    include/grpc++/impl/codegen/status_helper.h \
     include/grpc++/impl/codegen/string_ref.h \
     include/grpc++/impl/codegen/stub_options.h \
     include/grpc++/impl/codegen/sync.h \
@@ -3896,6 +3894,7 @@ PUBLIC_HEADERS_CXX += \
     include/grpc++/impl/codegen/service_type.h \
     include/grpc++/impl/codegen/status.h \
     include/grpc++/impl/codegen/status_code_enum.h \
+    include/grpc++/impl/codegen/status_helper.h \
     include/grpc++/impl/codegen/string_ref.h \
     include/grpc++/impl/codegen/stub_options.h \
     include/grpc++/impl/codegen/sync.h \
@@ -3903,27 +3902,23 @@ PUBLIC_HEADERS_CXX += \
     include/grpc++/impl/codegen/sync_no_cxx11.h \
     include/grpc++/impl/codegen/sync_stream.h \
     include/grpc++/impl/codegen/time.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc++/impl/codegen/config_protobuf.h \
 
 LIBGRPC++_REFLECTION_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(LIBGRPC++_REFLECTION_SRC))))
@@ -4123,6 +4118,7 @@ PUBLIC_HEADERS_CXX += \
     include/grpc++/impl/codegen/service_type.h \
     include/grpc++/impl/codegen/status.h \
     include/grpc++/impl/codegen/status_code_enum.h \
+    include/grpc++/impl/codegen/status_helper.h \
     include/grpc++/impl/codegen/string_ref.h \
     include/grpc++/impl/codegen/stub_options.h \
     include/grpc++/impl/codegen/sync.h \
@@ -4130,27 +4126,23 @@ PUBLIC_HEADERS_CXX += \
     include/grpc++/impl/codegen/sync_no_cxx11.h \
     include/grpc++/impl/codegen/sync_stream.h \
     include/grpc++/impl/codegen/time.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc++/impl/codegen/proto_utils.h \
     include/grpc++/impl/codegen/config_protobuf.h \
     include/grpc++/impl/codegen/thrift_serializer.h \
@@ -4244,6 +4236,7 @@ LIBGRPC++_UNSECURE_SRC = \
     src/core/lib/channel/handshaker.c \
     src/core/lib/channel/http_client_filter.c \
     src/core/lib/channel/http_server_filter.c \
+    src/core/lib/channel/message_size_filter.c \
     src/core/lib/compression/compression.c \
     src/core/lib/compression/message_compress.c \
     src/core/lib/debug/trace.c \
@@ -4383,27 +4376,23 @@ PUBLIC_HEADERS_CXX += \
     include/grpc/grpc_posix.h \
     include/grpc/grpc_security_constants.h \
     include/grpc/status.h \
-    include/grpc/impl/codegen/byte_buffer.h \
     include/grpc/impl/codegen/byte_buffer_reader.h \
     include/grpc/impl/codegen/compression_types.h \
     include/grpc/impl/codegen/connectivity_state.h \
     include/grpc/impl/codegen/grpc_types.h \
     include/grpc/impl/codegen/propagation_bits.h \
     include/grpc/impl/codegen/status.h \
-    include/grpc/impl/codegen/alloc.h \
     include/grpc/impl/codegen/atm.h \
     include/grpc/impl/codegen/atm_gcc_atomic.h \
     include/grpc/impl/codegen/atm_gcc_sync.h \
     include/grpc/impl/codegen/atm_windows.h \
-    include/grpc/impl/codegen/log.h \
+    include/grpc/impl/codegen/gpr_types.h \
     include/grpc/impl/codegen/port_platform.h \
     include/grpc/impl/codegen/slice.h \
-    include/grpc/impl/codegen/slice_buffer.h \
     include/grpc/impl/codegen/sync.h \
     include/grpc/impl/codegen/sync_generic.h \
     include/grpc/impl/codegen/sync_posix.h \
     include/grpc/impl/codegen/sync_windows.h \
-    include/grpc/impl/codegen/time.h \
     include/grpc++/impl/codegen/async_stream.h \
     include/grpc++/impl/codegen/async_unary_call.h \
     include/grpc++/impl/codegen/call.h \
@@ -4427,6 +4416,7 @@ PUBLIC_HEADERS_CXX += \
     include/grpc++/impl/codegen/service_type.h \
     include/grpc++/impl/codegen/status.h \
     include/grpc++/impl/codegen/status_code_enum.h \
+    include/grpc++/impl/codegen/status_helper.h \
     include/grpc++/impl/codegen/string_ref.h \
     include/grpc++/impl/codegen/stub_options.h \
     include/grpc++/impl/codegen/sync.h \
@@ -4490,6 +4480,7 @@ LIBGRPC_CLI_LIBS_SRC = \
     test/cpp/util/grpc_tool.cc \
     test/cpp/util/proto_file_parser.cc \
     test/cpp/util/proto_reflection_descriptor_database.cc \
+    test/cpp/util/service_describer.cc \
 
 PUBLIC_HEADERS_CXX += \
 
@@ -7232,6 +7223,38 @@ deps_census_resource_test: $(CENSUS_RESOURCE_TEST_OBJS:.o=.dep)
 ifneq ($(NO_SECURE),true)
 ifneq ($(NO_DEPS),true)
 -include $(CENSUS_RESOURCE_TEST_OBJS:.o=.dep)
+endif
+endif
+
+
+CENSUS_TRACE_CONTEXT_TEST_SRC = \
+    test/core/census/trace_context_test.c \
+
+CENSUS_TRACE_CONTEXT_TEST_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(CENSUS_TRACE_CONTEXT_TEST_SRC))))
+ifeq ($(NO_SECURE),true)
+
+# You can't build secure targets if you don't have OpenSSL.
+
+$(BINDIR)/$(CONFIG)/census_trace_context_test: openssl_dep_error
+
+else
+
+
+
+$(BINDIR)/$(CONFIG)/census_trace_context_test: $(CENSUS_TRACE_CONTEXT_TEST_OBJS) $(LIBDIR)/$(CONFIG)/libgrpc_test_util.a $(LIBDIR)/$(CONFIG)/libgrpc.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a
+	$(E) "[LD]      Linking $@"
+	$(Q) mkdir -p `dirname $@`
+	$(Q) $(LD) $(LDFLAGS) $(CENSUS_TRACE_CONTEXT_TEST_OBJS) $(LIBDIR)/$(CONFIG)/libgrpc_test_util.a $(LIBDIR)/$(CONFIG)/libgrpc.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a $(LDLIBS) $(LDLIBS_SECURE) -o $(BINDIR)/$(CONFIG)/census_trace_context_test
+
+endif
+
+$(OBJDIR)/$(CONFIG)/test/core/census/trace_context_test.o:  $(LIBDIR)/$(CONFIG)/libgrpc_test_util.a $(LIBDIR)/$(CONFIG)/libgrpc.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a
+
+deps_census_trace_context_test: $(CENSUS_TRACE_CONTEXT_TEST_OBJS:.o=.dep)
+
+ifneq ($(NO_SECURE),true)
+ifneq ($(NO_DEPS),true)
+-include $(CENSUS_TRACE_CONTEXT_TEST_OBJS:.o=.dep)
 endif
 endif
 
@@ -14685,6 +14708,38 @@ endif
 endif
 
 
+H2_HTTP_PROXY_TEST_SRC = \
+    test/core/end2end/fixtures/h2_http_proxy.c \
+
+H2_HTTP_PROXY_TEST_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(H2_HTTP_PROXY_TEST_SRC))))
+ifeq ($(NO_SECURE),true)
+
+# You can't build secure targets if you don't have OpenSSL.
+
+$(BINDIR)/$(CONFIG)/h2_http_proxy_test: openssl_dep_error
+
+else
+
+
+
+$(BINDIR)/$(CONFIG)/h2_http_proxy_test: $(H2_HTTP_PROXY_TEST_OBJS) $(LIBDIR)/$(CONFIG)/libend2end_tests.a $(LIBDIR)/$(CONFIG)/libgrpc_test_util.a $(LIBDIR)/$(CONFIG)/libgrpc.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a
+	$(E) "[LD]      Linking $@"
+	$(Q) mkdir -p `dirname $@`
+	$(Q) $(LD) $(LDFLAGS) $(H2_HTTP_PROXY_TEST_OBJS) $(LIBDIR)/$(CONFIG)/libend2end_tests.a $(LIBDIR)/$(CONFIG)/libgrpc_test_util.a $(LIBDIR)/$(CONFIG)/libgrpc.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a $(LDLIBS) $(LDLIBS_SECURE) -o $(BINDIR)/$(CONFIG)/h2_http_proxy_test
+
+endif
+
+$(OBJDIR)/$(CONFIG)/test/core/end2end/fixtures/h2_http_proxy.o:  $(LIBDIR)/$(CONFIG)/libend2end_tests.a $(LIBDIR)/$(CONFIG)/libgrpc_test_util.a $(LIBDIR)/$(CONFIG)/libgrpc.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a
+
+deps_h2_http_proxy_test: $(H2_HTTP_PROXY_TEST_OBJS:.o=.dep)
+
+ifneq ($(NO_SECURE),true)
+ifneq ($(NO_DEPS),true)
+-include $(H2_HTTP_PROXY_TEST_OBJS:.o=.dep)
+endif
+endif
+
+
 H2_LOAD_REPORTING_TEST_SRC = \
     test/core/end2end/fixtures/h2_load_reporting.c \
 
@@ -15122,6 +15177,26 @@ deps_h2_full+trace_nosec_test: $(H2_FULL+TRACE_NOSEC_TEST_OBJS:.o=.dep)
 
 ifneq ($(NO_DEPS),true)
 -include $(H2_FULL+TRACE_NOSEC_TEST_OBJS:.o=.dep)
+endif
+
+
+H2_HTTP_PROXY_NOSEC_TEST_SRC = \
+    test/core/end2end/fixtures/h2_http_proxy.c \
+
+H2_HTTP_PROXY_NOSEC_TEST_OBJS = $(addprefix $(OBJDIR)/$(CONFIG)/, $(addsuffix .o, $(basename $(H2_HTTP_PROXY_NOSEC_TEST_SRC))))
+
+
+$(BINDIR)/$(CONFIG)/h2_http_proxy_nosec_test: $(H2_HTTP_PROXY_NOSEC_TEST_OBJS) $(LIBDIR)/$(CONFIG)/libend2end_nosec_tests.a $(LIBDIR)/$(CONFIG)/libgrpc_test_util_unsecure.a $(LIBDIR)/$(CONFIG)/libgrpc_unsecure.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a
+	$(E) "[LD]      Linking $@"
+	$(Q) mkdir -p `dirname $@`
+	$(Q) $(LD) $(LDFLAGS) $(H2_HTTP_PROXY_NOSEC_TEST_OBJS) $(LIBDIR)/$(CONFIG)/libend2end_nosec_tests.a $(LIBDIR)/$(CONFIG)/libgrpc_test_util_unsecure.a $(LIBDIR)/$(CONFIG)/libgrpc_unsecure.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a $(LDLIBS) -o $(BINDIR)/$(CONFIG)/h2_http_proxy_nosec_test
+
+$(OBJDIR)/$(CONFIG)/test/core/end2end/fixtures/h2_http_proxy.o:  $(LIBDIR)/$(CONFIG)/libend2end_nosec_tests.a $(LIBDIR)/$(CONFIG)/libgrpc_test_util_unsecure.a $(LIBDIR)/$(CONFIG)/libgrpc_unsecure.a $(LIBDIR)/$(CONFIG)/libgpr_test_util.a $(LIBDIR)/$(CONFIG)/libgpr.a
+
+deps_h2_http_proxy_nosec_test: $(H2_HTTP_PROXY_NOSEC_TEST_OBJS:.o=.dep)
+
+ifneq ($(NO_DEPS),true)
+-include $(H2_HTTP_PROXY_NOSEC_TEST_OBJS:.o=.dep)
 endif
 
 
@@ -15755,6 +15830,7 @@ test/cpp/util/create_test_channel.cc: $(OPENSSL_DEP)
 test/cpp/util/grpc_tool.cc: $(OPENSSL_DEP)
 test/cpp/util/proto_file_parser.cc: $(OPENSSL_DEP)
 test/cpp/util/proto_reflection_descriptor_database.cc: $(OPENSSL_DEP)
+test/cpp/util/service_describer.cc: $(OPENSSL_DEP)
 test/cpp/util/string_ref_helper.cc: $(OPENSSL_DEP)
 test/cpp/util/subprocess.cc: $(OPENSSL_DEP)
 test/cpp/util/test_config_cc.cc: $(OPENSSL_DEP)
