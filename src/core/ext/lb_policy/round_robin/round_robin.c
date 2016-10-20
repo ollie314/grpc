@@ -396,7 +396,6 @@ static int rr_pick(grpc_exec_ctx *exec_ctx, grpc_lb_policy *pol,
   gpr_mu_lock(&p->mu);
   if ((selected = peek_next_connected_locked(p))) {
     /* readily available, report right away */
-    gpr_mu_unlock(&p->mu);
     *target = grpc_subchannel_get_connected_subchannel(selected->subchannel);
 
     if (user_data != NULL) {
@@ -409,6 +408,7 @@ static int rr_pick(grpc_exec_ctx *exec_ctx, grpc_lb_policy *pol,
     }
     /* only advance the last picked pointer if the selection was used */
     advance_last_picked_locked(p);
+    gpr_mu_unlock(&p->mu);
     return 1;
   } else {
     /* no pick currently available. Save for later in list of pending picks */
@@ -629,6 +629,7 @@ static grpc_lb_policy *round_robin_create(grpc_exec_ctx *exec_ctx,
     sc_args.addr =
         (struct sockaddr *)(&args->addresses->addresses[i].address.addr);
     sc_args.addr_len = args->addresses->addresses[i].address.len;
+    sc_args.args = args->additional_args;
 
     grpc_subchannel *subchannel = grpc_client_channel_factory_create_subchannel(
         exec_ctx, args->client_channel_factory, &sc_args);
